@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+dist/
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+coverage/
+.turbo/

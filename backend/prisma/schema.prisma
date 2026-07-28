@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Platform {
+  INSTAGRAM
+  FACEBOOK
+  TWITTER
+  LINKEDIN
+  TIKTOK
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+enum ShopRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id        String    @id @default(uuid()) @db.Uuid
+  email     String    @unique @db.VarChar(255)
+  name      String    @db.VarChar(255)
+  password  String    @db.VarChar(255)
+  avatar    String?
+  role      ShopRole  @default(OWNER)
+  shopId    String?   @db.Uuid
+  shop      Shop?     @relation("ShopUsers", fields: [shopId], references: [id])
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([email])
+  @@index([shopId])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique @db.VarChar(512)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Shop {
+  id        String         @id @default(uuid()) @db.Uuid
+  name      String         @db.VarChar(255)
+  slug      String         @unique @db.VarChar(255)
+  logo      String?
+  timezone  String         @default("UTC") @db.VarChar(50)
+  users     User[]         @relation("ShopUsers")
+  accounts  SocialAccount[]
+  posts     Post[]
+  media     Media[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([slug])
+  @@map("shops")
+}
+
+model SocialAccount {
+  id          String   @id @default(uuid()) @db.Uuid
+  platform    Platform
+  accountId   String   @db.VarChar(255)
+  name        String   @db.VarChar(255)
+  avatar      String?
+  accessToken String?  @db.Text
+  refreshToken String? @db.Text
+  tokenExpiresAt DateTime?
+  shopId      String   @db.Uuid
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  posts       Post[]      @relation("PostAccounts")
+  analytics   Analytics[]
+  isActive    Boolean     @default(true)
+  lastSyncedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([platform, accountId])
+  @@index([shopId])
+  @@index([platform])
+  @@map("social_accounts")
+}
+
+model Post {
+  id          String         @id @default(uuid()) @db.Uuid
+  content     String         @db.Text
+  media       String[]       @default([])
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  status      PostStatus     @default(DRAFT)
+  shopId      String         @db.Uuid
+  shop        Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  accounts    SocialAccount[] @relation("PostAccounts")
+  createdById String         @db.Uuid
+  platformErrors Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([shopId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("posts")
+}
+
+model Media {
+  id        String   @id @default(uuid()) @db.Uuid
+  filename  String   @db.VarChar(255)
+  originalName String @db.VarChar(255)
+  mimeType  String   @db.VarChar(100)
+  size      Int
+  url       String   @db.Text
+  thumbnailUrl String?
+  shopId    String   @db.Uuid
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  uploadedById String @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@index([shopId])
+  @@map("media")
+}
+
+model Analytics {
+  id          String   @id @default(uuid()) @db.Uuid
+  accountId   String   @db.Uuid
+  account     SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  date        DateTime
+  followers   Int      @default(0)
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  shares      Int      @default(0)
+  impressions Int      @default(0)
+  reach       Int      @default(0)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@unique([accountId, date])
+  @@index([accountId, date])
+  @@map("analytics")
+}
