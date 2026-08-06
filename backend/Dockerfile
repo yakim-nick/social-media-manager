@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS builder
+FROM node:25-bookworm-slim AS builder
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
@@ -7,7 +7,7 @@ COPY prisma/ ./prisma/
 RUN npx prisma generate
 COPY . .
 
-FROM node:20-bookworm-slim AS runner
+FROM node:25-bookworm-slim AS runner
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/* && \
     addgroup --system --gid 1001 nodejs && \
