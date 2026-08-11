@@ -6,10 +6,12 @@
   import LoadingSpinner from '../components/LoadingSpinner.svelte';
   import EmptyState from '../components/EmptyState.svelte';
 
+  // Filter state.
   let startDate = '';
   let endDate = '';
   let selectedAccountId = '';
 
+  /** Metrics shown as progress bars and in the summary row. */
   const metrics = [
     { key: 'followers', label: 'Followers', color: 'bg-blue-500' },
     { key: 'likes', label: 'Likes', color: 'bg-pink-500' },
@@ -22,18 +24,19 @@
   onMount(async () => {
     try {
       await fetchAccounts();
-      // Set default date range to last 30 days
+      // Default the date range to the last 30 days.
       const end = new Date();
       const start = new Date();
       start.setDate(start.getDate() - 30);
       startDate = start.toISOString().split('T')[0];
       endDate = end.toISOString().split('T')[0];
       loadAnalytics();
-    } catch (err) {
+    } catch {
       addNotification('error', 'Failed to initialize analytics');
     }
   });
 
+  /** Fetch analytics using the current filters. */
   async function loadAnalytics() {
     try {
       await fetchAnalytics({
@@ -47,9 +50,10 @@
   }
 
   $: data = $analyticsData?.metrics || $analyticsData?.data || null;
-  $: maxValue = data ? Math.max(...metrics.map((m) => data[m.key] || 0), 1) : 1;
+  $: maxValue = data ? Math.max(...metrics.map((metric) => data[metric.key] || 0), 1) : 1;
 
-  function getPercentage(value) {
+  /** Convert a metric value to a percentage of the largest metric (for bars). */
+  function getBarWidth(value) {
     return Math.max(0, Math.min(100, ((value || 0) / maxValue) * 100));
   }
 </script>
@@ -123,7 +127,7 @@
           <div class="h-4 w-full rounded-full bg-gray-100 overflow-hidden">
             <div
               class="h-full rounded-full {metric.color} transition-all duration-500"
-              style="width: {getPercentage(data[metric.key])}%"
+              style="width: {getBarWidth(data[metric.key])}%"
             ></div>
           </div>
         </div>

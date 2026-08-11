@@ -8,14 +8,18 @@
   import EmptyState from '../components/EmptyState.svelte';
   import Modal from '../components/Modal.svelte';
 
+  // List filters and pagination state.
   let filterStatus = '';
   let sortBy = 'createdAt';
   let sortOrder = 'desc';
   let page = 1;
   let limit = 10;
 
+  // Delete confirmation modal state.
   let deleteModalOpen = false;
   let selectedPostId = null;
+
+  // Schedule modal state.
   let scheduleModalOpen = false;
   let scheduleDate = '';
   let scheduleTime = '';
@@ -24,6 +28,7 @@
     loadPosts();
   });
 
+  /** Fetch the current page of posts using the active filters. */
   async function loadPosts() {
     try {
       await fetchPosts({
@@ -38,11 +43,13 @@
     }
   }
 
+  // Reset to the first page and reload whenever the filters change.
   $: if (filterStatus !== undefined || sortBy) {
     page = 1;
     loadPosts();
   }
 
+  /** Delete the post selected in the confirmation modal. */
   async function handleDeleteConfirm() {
     if (!selectedPostId) return;
     try {
@@ -56,16 +63,19 @@
     }
   }
 
-  function promptDelete(e) {
-    selectedPostId = e.detail.id;
+  /** Open the delete confirmation modal for a post. */
+  function promptDelete(event) {
+    selectedPostId = event.detail.id;
     deleteModalOpen = true;
   }
 
-  function promptSchedule(e) {
-    selectedPostId = e.detail.id;
+  /** Open the schedule modal for a post. */
+  function promptSchedule(event) {
+    selectedPostId = event.detail.id;
     scheduleModalOpen = true;
   }
 
+  /** Schedule the post selected in the modal at the chosen date/time. */
   async function handleScheduleConfirm() {
     if (!selectedPostId || !scheduleDate) return;
     try {
@@ -82,9 +92,10 @@
     }
   }
 
-  async function handlePublish(e) {
+  /** Publish a post immediately. */
+  async function handlePublish(event) {
     try {
-      await publishPost(e.detail.id);
+      await publishPost(event.detail.id);
       addNotification('success', 'Post published!');
       loadPosts();
     } catch (err) {
@@ -92,12 +103,14 @@
     }
   }
 
-  function handleEdit(e) {
-    window.location.hash = `#/posts/edit/${e.detail.id}`;
+  /** Navigate to the post editor for a post. */
+  function handleEdit(event) {
+    window.location.hash = `#/posts/edit/${event.detail.id}`;
   }
 
-  function handlePageChange(e) {
-    page = e.detail;
+  /** Load a different page of results. */
+  function handlePageChange(event) {
+    page = event.detail;
     loadPosts();
   }
 </script>

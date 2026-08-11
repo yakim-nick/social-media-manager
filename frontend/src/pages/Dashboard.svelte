@@ -1,8 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { user } from '../stores/auth.js';
-  import { fetchPosts, posts, postsLoading } from '../stores/posts.js';
-  import { fetchAccounts, accounts, accountsLoading } from '../stores/accounts.js';
+  import { fetchPosts, posts } from '../stores/posts.js';
+  import { fetchAccounts, accounts } from '../stores/accounts.js';
   import { addNotification } from '../stores/ui.js';
   import PostCard from '../components/PostCard.svelte';
   import LoadingSpinner from '../components/LoadingSpinner.svelte';
@@ -17,12 +16,13 @@
     accountsConnected: 0,
   };
 
+  // Recompute the summary stats whenever the underlying data changes.
   $: if ($posts && $accounts) {
     stats = {
       totalPosts: $posts.length,
-      publishedPosts: $posts.filter((p) => p.status === 'published').length,
-      scheduledPosts: $posts.filter((p) => p.status === 'scheduled').length,
-      draftPosts: $posts.filter((p) => p.status === 'draft').length,
+      publishedPosts: $posts.filter((post) => post.status === 'published').length,
+      scheduledPosts: $posts.filter((post) => post.status === 'scheduled').length,
+      draftPosts: $posts.filter((post) => post.status === 'draft').length,
       accountsConnected: $accounts.length,
     };
   }
@@ -42,12 +42,13 @@
 
   $: recentPosts = $posts?.slice(0, 5) || [];
 
-  function handleEditPost(e) {
-    window.location.hash = `#/posts/edit/${e.detail.id}`;
+  /** Navigate to the post editor for a post. */
+  function handleEditPost(event) {
+    window.location.hash = `#/posts/edit/${event.detail.id}`;
   }
 
-  function handleDeletePost(e) {
-    // delegate to Posts page via redirect
+  /** Delegate deletion to the Posts page via redirect. */
+  function handleDeletePost() {
     window.location.hash = '#/posts';
   }
 </script>

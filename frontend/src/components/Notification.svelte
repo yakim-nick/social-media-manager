@@ -1,6 +1,7 @@
 <script>
   import { notifications, dismissNotification } from '../stores/ui.js';
 
+  /** Tailwind classes per notification type. */
   const typeStyles = {
     success: 'bg-green-50 border-green-200 text-green-800',
     error: 'bg-red-50 border-red-200 text-red-800',
@@ -8,6 +9,7 @@
     info: 'bg-blue-50 border-blue-200 text-blue-800',
   };
 
+  /** SVG icon paths per notification type. */
   const typeIcons = {
     success: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
     error: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -16,6 +18,7 @@
   };
 </script>
 
+<!-- Toast notification stack, fixed to the top-right corner. -->
 <div class="fixed top-4 right-4 z-[60] flex flex-col gap-2 max-w-sm">
   {#each $notifications as notif (notif.id)}
     <div

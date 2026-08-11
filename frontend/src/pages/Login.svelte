@@ -8,12 +8,14 @@
   let error = '';
   let submitted = false;
 
+  // Surface store-level auth errors in the form.
   $: if ($authError) {
     error = $authError;
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  /** Submit the login form and navigate to the dashboard on success. */
+  async function handleSubmit(event) {
+    event.preventDefault();
     submitted = true;
 
     if (!email.trim() || !password.trim()) {

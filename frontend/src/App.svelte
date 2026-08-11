@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { isAuthenticated, user, checkAuth } from './stores/auth.js';
+  import { isAuthenticated, checkAuth } from './stores/auth.js';
   import Layout from './components/Layout.svelte';
   import LoadingSpinner from './components/LoadingSpinner.svelte';
   import Login from './pages/Login.svelte';
@@ -15,7 +15,12 @@
   let routeParams = {};
   let checkingAuth = true;
 
-  function parseHash() {
+  /**
+   * Parse the URL hash into a route path plus any params.
+   * Supports `/posts/edit/:id` and `/posts/new` special cases.
+   * @returns {{ path: string, params: object }} Parsed route.
+   */
+  function parseHashRoute() {
     const hash = window.location.hash.slice(1) || '/dashboard';
     const parts = hash.split('/').filter(Boolean);
 
@@ -35,8 +40,9 @@
     return { path, params };
   }
 
+  /** Re-read the current route from the URL hash. */
   function handleHashChange() {
-    const parsed = parseHash();
+    const parsed = parseHashRoute();
     currentRoute = parsed.path;
     routeParams = parsed.params;
   }
@@ -53,7 +59,7 @@
   $: isAuth = $isAuthenticated;
 
   $: {
-    // Redirect to dashboard on login if already authenticated
+    // Redirect authenticated users away from the login/register pages.
     if (!checkingAuth && isAuth && (currentRoute === '/login' || currentRoute === '/register')) {
       currentRoute = '/dashboard';
       window.location.hash = '#/dashboard';

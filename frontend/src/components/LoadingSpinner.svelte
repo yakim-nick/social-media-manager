@@ -1,4 +1,9 @@
 <script>
+  /**
+   * Loading spinner with configurable size and color.
+   * @prop {string} size - Spinner size: 'sm' | 'md' | 'lg'.
+   * @prop {string} color - Spinner color: 'primary' | 'white' | 'gray'.
+   */
   export let size = 'md';
   export let color = 'primary';
 

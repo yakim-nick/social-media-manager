@@ -2,6 +2,12 @@ import prisma from '../utils/prisma.js';
 import { hashPassword, comparePassword } from '../services/auth.service.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 
+/**
+ * Return the profile of the authenticated user, including their shop.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function getProfile(req, res) {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
@@ -25,6 +31,12 @@ export async function getProfile(req, res) {
   res.json({ data: user });
 }
 
+/**
+ * Update the authenticated user's profile fields.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function updateProfile(req, res) {
   const { name, avatar } = req.body;
 
@@ -49,6 +61,12 @@ export async function updateProfile(req, res) {
   res.json({ data: user });
 }
 
+/**
+ * Change the authenticated user's password after verifying the current one.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
 
@@ -65,16 +83,16 @@ export async function changePassword(req, res) {
     throw new NotFoundError('User not found');
   }
 
-  const valid = await comparePassword(currentPassword, user.password);
-  if (!valid) {
+  const passwordMatches = await comparePassword(currentPassword, user.password);
+  if (!passwordMatches) {
     throw new ValidationError('Current password is incorrect');
   }
 
-  const hashed = await hashPassword(newPassword);
+  const hashedPassword = await hashPassword(newPassword);
 
   await prisma.user.update({
     where: { id: req.user.id },
-    data: { password: hashed },
+    data: { password: hashedPassword },
   });
 
   res.json({ data: { message: 'Password changed successfully' } });

@@ -8,28 +8,29 @@
   import EmptyState from '../components/EmptyState.svelte';
   import Modal from '../components/Modal.svelte';
 
-  // Profile form
+  // Profile form state.
   let profileName = '';
   let profileEmail = '';
   let profileSaving = false;
 
-  // Password form
+  // Password form state.
   let currentPassword = '';
   let newPassword = '';
   let confirmNewPassword = '';
   let passwordSaving = false;
   let passwordError = '';
 
-  // Connect account
+  // Connect-account modal state.
   let connectModalOpen = false;
   let platform = 'facebook';
   let connectData = '';
   let connecting = false;
 
-  // Disconnect
+  // Disconnect confirmation modal state.
   let disconnectModalOpen = false;
   let disconnectId = null;
 
+  // Pre-fill the profile form from the current user.
   $: if ($user) {
     profileName = $user.name || '';
     profileEmail = $user.email || '';
@@ -41,6 +42,7 @@
     });
   });
 
+  /** Save the profile name. */
   async function saveProfile() {
     if (!profileName.trim()) {
       addNotification('error', 'Name is required');
@@ -58,6 +60,7 @@
     }
   }
 
+  /** Change the password after validating the form. */
   async function changePassword() {
     passwordError = '';
     if (!currentPassword || !newPassword) {
@@ -89,7 +92,8 @@
     }
   }
 
-  async function handleConnect() {
+  /** Connect a new account using the platform-specific credential. */
+  async function handleConnectAccount() {
     if (!connectData.trim()) {
       addNotification('error', 'Please provide the required connection data');
       return;
@@ -114,7 +118,8 @@
     }
   }
 
-  async function handleDisconnect() {
+  /** Disconnect the account selected in the confirmation modal. */
+  async function handleDisconnectAccount() {
     if (!disconnectId) return;
     try {
       await disconnectAccount(disconnectId);
@@ -126,8 +131,9 @@
     }
   }
 
-  function promptDisconnect(e) {
-    disconnectId = e.id || e.currentTarget?.dataset?.id;
+  /** Open the disconnect confirmation modal for an account. */
+  function promptDisconnect(event) {
+    disconnectId = event.id || event.currentTarget?.dataset?.id;
     disconnectModalOpen = true;
   }
 </script>
@@ -269,7 +275,7 @@
   </div>
   <div slot="footer">
     <button class="btn-secondary" on:click={() => { connectModalOpen = false; connectData = ''; }}>Cancel</button>
-    <button class="btn-primary" on:click={handleConnect} disabled={connecting || !connectData.trim()}>
+    <button class="btn-primary" on:click={handleConnectAccount} disabled={connecting || !connectData.trim()}>
       {connecting ? 'Connecting...' : 'Connect'}
     </button>
   </div>
@@ -284,6 +290,6 @@
   <p class="text-sm text-gray-600">Are you sure you want to disconnect this account? You can reconnect it later.</p>
   <div slot="footer">
     <button class="btn-secondary" on:click={() => { disconnectModalOpen = false; disconnectId = null; }}>Cancel</button>
-    <button class="btn-danger" on:click={handleDisconnect}>Disconnect</button>
+    <button class="btn-danger" on:click={handleDisconnectAccount}>Disconnect</button>
   </div>
 </Modal>

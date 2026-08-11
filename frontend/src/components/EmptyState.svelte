@@ -1,6 +1,14 @@
 <script>
   import { createEventDispatcher } from 'svelte';
 
+  /**
+   * Empty-state placeholder with optional description and action button.
+   * @prop {string} title - Heading text.
+   * @prop {string} description - Optional supporting text.
+   * @prop {string} actionLabel - Optional action button label.
+   * @prop {string} icon - Icon variant: 'empty' | 'error' | 'search'.
+   * @event action - Dispatched when the action button is clicked.
+   */
   export let title = 'Nothing here yet';
   export let description = '';
   export let actionLabel = '';
@@ -8,6 +16,7 @@
 
   const dispatch = createEventDispatcher();
 
+  /** SVG icon paths per variant. */
   const icons = {
     empty: {
       path: 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4',

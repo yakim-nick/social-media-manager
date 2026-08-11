@@ -11,11 +11,13 @@
   let error = '';
   let submitted = false;
 
+  // Surface store-level auth errors in the form.
   $: if ($authError) {
     error = $authError;
   }
 
-  function validate() {
+  /** Validate the registration form, returning human-readable error messages. */
+  function validateForm() {
     const errors = [];
     if (!name.trim()) errors.push('Name is required.');
     if (!email.trim()) errors.push('Email is required.');
@@ -26,11 +28,12 @@
     return errors;
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  /** Submit the registration form and navigate to the dashboard on success. */
+  async function handleSubmit(event) {
+    event.preventDefault();
     submitted = true;
 
-    const errors = validate();
+    const errors = validateForm();
     if (errors.length > 0) {
       error = errors.join(' ');
       return;

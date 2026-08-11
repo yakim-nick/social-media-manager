@@ -5,6 +5,9 @@ import { validate } from '../middleware/validate.js';
 import { Platform } from '../config/constants.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
+/**
+ * Social account routes: CRUD plus a sync trigger.
+ */
 const createAccountSchema = z.object({
   platform: z.nativeEnum(Platform),
   accountId: z.string().min(1),

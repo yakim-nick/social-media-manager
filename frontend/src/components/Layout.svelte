@@ -5,11 +5,16 @@
   import Sidebar from './Sidebar.svelte';
   import Notification from './Notification.svelte';
 
+  /**
+   * Authenticated app shell: sidebar, top bar and page content slot.
+   * @prop {string} currentRoute - Active route path (for the sidebar).
+   */
   /** @type {{ currentRoute: string }} */
   export let currentRoute = '';
 
   let showUserMenu = false;
 
+  /** Log out and notify the user. */
   async function handleLogout() {
     showUserMenu = false;
     try {
@@ -20,6 +25,7 @@
     }
   }
 
+  /** Close the user dropdown menu. */
   function closeUserMenu() {
     showUserMenu = false;
   }

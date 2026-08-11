@@ -3,10 +3,12 @@ import path from 'node:path';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import prisma from '../utils/prisma.js';
-import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
-import { PAGINATION_DEFAULTS } from '../config/constants.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { parsePagination } from '../utils/pagination.js';
+import { requireMediaAccess, findShopForUser, getUserShopIds } from '../utils/access.js';
 import config from '../config/index.js';
 
+// Store uploads on disk under a generated UUID name (original extension kept).
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     const dir = config.upload.dir;
@@ -15,8 +17,8 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const name = `${uuidv4()}${ext}`;
-    cb(null, name);
+    const uniqueName = `${uuidv4()}${ext}`;
+    cb(null, uniqueName);
   },
 });
 
@@ -32,17 +34,19 @@ const upload = multer({
   },
 });
 
+/**
+ * Middleware factory that accepts a single uploaded `file` field.
+ *
+ * Multer errors are mapped to ValidationErrors (413-size and general),
+ * and a missing file is rejected with a ValidationError.
+ *
+ * @returns {Function} Express-style middleware `(req, res, next)`.
+ */
 export function uploadMiddleware() {
   return (req, res, next) => {
     upload.single('file')(req, res, (err) => {
       if (err) {
-        if (err instanceof multer.MulterError) {
-          if (err.code === 'LIMIT_FILE_SIZE') {
-            return next(new ValidationError('File exceeds maximum size'));
-          }
-          return next(new ValidationError(err.message));
-        }
-        return next(err);
+        return next(mapUploadError(err));
       }
 
       if (!req.file) {
@@ -54,29 +58,32 @@ export function uploadMiddleware() {
   };
 }
 
+/**
+ * Persist the uploaded file as a media record for the given shop.
+ * The file is removed from disk if the shop cannot be found.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function saveMediaRecord(req, res) {
-  const file = req.file;
+  const uploadedFile = req.file;
   const shopId = req.body.shopId;
 
-  const shop = await prisma.shop.findFirst({
-    where: {
-      id: shopId,
-      users: { some: { id: req.user.id } },
-    },
-  });
+  const shop = await findShopForUser(shopId, req.user.id);
 
   if (!shop) {
-    fs.unlinkSync(file.path);
+    // Avoid leaving an orphaned file behind when the upload is rejected.
+    fs.unlinkSync(uploadedFile.path);
     throw new NotFoundError('Shop not found');
   }
 
   const media = await prisma.media.create({
     data: {
-      filename: file.filename,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      url: `/uploads/${file.filename}`,
+      filename: uploadedFile.filename,
+      originalName: uploadedFile.originalname,
+      mimeType: uploadedFile.mimetype,
+      size: uploadedFile.size,
+      url: `/uploads/${uploadedFile.filename}`,
       shopId: shop.id,
       uploadedById: req.user.id,
     },
@@ -85,19 +92,16 @@ export async function saveMediaRecord(req, res) {
   res.json({ data: media }, 201);
 }
 
+/**
+ * List media visible to the authenticated user, with pagination.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function list(req, res) {
-  const page = parseInt(req.query.page) || PAGINATION_DEFAULTS.page;
-  const limit = Math.min(
-    parseInt(req.query.limit) || PAGINATION_DEFAULTS.limit,
-    PAGINATION_DEFAULTS.maxLimit
-  );
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination(req.query);
 
-  const userShops = await prisma.shop.findMany({
-    where: { users: { some: { id: req.user.id } } },
-    select: { id: true },
-  });
-  const shopIds = userShops.map((s) => s.id);
+  const shopIds = await getUserShopIds(req.user.id);
 
   const where = { shopId: { in: shopIds } };
   if (req.query.shopId) where.shopId = req.query.shopId;
@@ -115,31 +119,39 @@ export async function list(req, res) {
   res.paginated(media, total, page, limit);
 }
 
+/**
+ * Delete a media record the user has access to, removing the file from disk.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function remove(req, res) {
-  const media = await prisma.media.findUnique({
-    where: { id: req.params.id },
-  });
-
-  if (!media) {
-    throw new NotFoundError('Media not found');
-  }
-
-  const isMember = await prisma.shop.findFirst({
-    where: { id: media.shopId, users: { some: { id: req.user.id } } },
-  });
-
-  if (!isMember) {
-    throw new ForbiddenError('You do not have access to this media');
-  }
+  const media = await requireMediaAccess(req.params.id, req.user.id);
 
   const filePath = path.join(config.upload.dir, media.filename);
   try {
     fs.unlinkSync(filePath);
   } catch {
-    // File may not exist on disk, still remove from DB
+    // File may not exist on disk; still remove the DB record.
   }
 
   await prisma.media.delete({ where: { id: req.params.id } });
 
   res.json({ data: { message: 'Media deleted successfully' } });
+}
+
+/**
+ * Convert a multer error into an appropriate AppError.
+ *
+ * @param {Error} err - Error raised by multer.
+ * @returns {Error} A ValidationError or the original error.
+ */
+function mapUploadError(err) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return new ValidationError('File exceeds maximum size');
+    }
+    return new ValidationError(err.message);
+  }
+  return err;
 }

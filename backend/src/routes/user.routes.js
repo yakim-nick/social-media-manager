@@ -4,6 +4,9 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
+/**
+ * User routes: profile read/update and password change.
+ */
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   avatar: z.string().optional(),

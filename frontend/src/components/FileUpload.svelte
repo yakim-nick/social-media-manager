@@ -1,6 +1,14 @@
 <script>
   import { createEventDispatcher } from 'svelte';
 
+  /**
+   * Drag-and-drop file uploader with size validation and previews.
+   * @prop {string} accept - Accepted MIME types (passed to the file input).
+   * @prop {number} maxSize - Maximum file size in bytes.
+   * @prop {boolean} multiple - Whether multiple files may be selected.
+   * @event filesChange - Dispatched with `{ files }` (array when multiple,
+   *   single file or null otherwise).
+   */
   export let accept = 'image/*';
   export let maxSize = 10 * 1024 * 1024; // 10 MB
   export let multiple = false;
@@ -11,27 +19,36 @@
   let files = [];
   let error = '';
 
-  function handleDragOver(e) {
-    e.preventDefault();
+  /** Highlight the drop zone while dragging over it. */
+  function handleDragOver(event) {
+    event.preventDefault();
     dragOver = true;
   }
 
+  /** Remove the drop-zone highlight when leaving it. */
   function handleDragLeave() {
     dragOver = false;
   }
 
-  function handleDrop(e) {
-    e.preventDefault();
+  /** Accept files dropped onto the drop zone. */
+  function handleDrop(event) {
+    event.preventDefault();
     dragOver = false;
-    const droppedFiles = Array.from(e.dataTransfer.files);
+    const droppedFiles = Array.from(event.dataTransfer.files);
     processFiles(droppedFiles);
   }
 
-  function handleFileSelect(e) {
-    const selectedFiles = Array.from(e.target.files);
+  /** Accept files chosen via the file input. */
+  function handleFileSelect(event) {
+    const selectedFiles = Array.from(event.target.files);
     processFiles(selectedFiles);
   }
 
+  /**
+   * Validate and store newly selected files, rejecting any that exceed the
+   * maximum size, then notify the parent.
+   * @param {File[]} newFiles - Files to add.
+   */
   function processFiles(newFiles) {
     error = '';
     const validFiles = [];
@@ -52,17 +69,20 @@
     dispatch('filesChange', { files: multiple ? files : files[0] });
   }
 
+  /** Remove a file by index and notify the parent. */
   function removeFile(index) {
     files = files.filter((_, i) => i !== index);
     dispatch('filesChange', { files: multiple ? files : files[0] || null });
   }
 
+  /** Format a byte count as a human-readable size string. */
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
+  /** Create an object URL preview for image files (null for others). */
   function getFilePreviewUrl(file) {
     if (file.type.startsWith('image/')) {
       return URL.createObjectURL(file);
@@ -70,7 +90,7 @@
     return null;
   }
 
-  $: previewUrls = files.map((f) => getFilePreviewUrl(f));
+  $: previewUrls = files.map((file) => getFilePreviewUrl(file));
 </script>
 
 <div

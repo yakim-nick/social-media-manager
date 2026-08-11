@@ -2,6 +2,14 @@
   import { createEventDispatcher } from 'svelte';
   import StatusBadge from './StatusBadge.svelte';
 
+  /**
+   * Card summarizing a single post with contextual actions.
+   * @prop {object} post - Post record.
+   * @prop {boolean} compact - Whether to use the compact layout.
+   * @event edit - Dispatched with `{ id }` for draft posts.
+   * @event publish - Dispatched with `{ id }` for scheduled posts.
+   * @event delete - Dispatched with `{ id }` for draft/scheduled posts.
+   */
   export let post = {};
   export let compact = false;
 
@@ -14,7 +22,7 @@
   $: createdAt = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '';
   $: scheduledAt = post.scheduledAt ? new Date(post.scheduledAt).toLocaleString() : null;
   $: accountNames = post.accounts
-    ? (Array.isArray(post.accounts) ? post.accounts.map((a) => a.name || a).join(', ') : '')
+    ? (Array.isArray(post.accounts) ? post.accounts.map((account) => account.name || account).join(', ') : '')
     : '';
 </script>
 

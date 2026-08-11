@@ -1,6 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
 
+  /**
+   * Pagination controls with a compact page-number window.
+   * @prop {number} page - Current page (1-based).
+   * @prop {number} totalPages - Total number of pages.
+   * @prop {number} total - Total item count (for display).
+   * @event pageChange - Dispatched with the requested page number.
+   */
   export let page = 1;
   export let totalPages = 1;
   export let total = 0;
@@ -11,8 +18,13 @@
   $: hasNext = page < totalPages;
   $: pages = getPageNumbers();
 
+  /**
+   * Compute the page numbers to show, keeping the current page centered
+   * within a window of at most 5 entries.
+   * @returns {number[]} Page numbers to render.
+   */
   function getPageNumbers() {
-    const range = [];
+    const pageNumbers = [];
     const maxVisible = 5;
     let start = Math.max(1, page - Math.floor(maxVisible / 2));
     let end = Math.min(totalPages, start + maxVisible - 1);
@@ -20,21 +32,24 @@
       start = Math.max(1, end - maxVisible + 1);
     }
     for (let i = start; i <= end; i++) {
-      range.push(i);
+      pageNumbers.push(i);
     }
-    return range;
+    return pageNumbers;
   }
 
-  function goTo(p) {
-    if (p >= 1 && p <= totalPages && p !== page) {
-      dispatch('pageChange', p);
+  /** Request a page change, ignoring out-of-range or repeated pages. */
+  function goTo(pageNumber) {
+    if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== page) {
+      dispatch('pageChange', pageNumber);
     }
   }
 
+  /** Go to the previous page. */
   function handlePrev() {
     if (hasPrev) goTo(page - 1);
   }
 
+  /** Go to the next page. */
   function handleNext() {
     if (hasNext) goTo(page + 1);
   }
@@ -60,13 +75,13 @@
         </svg>
       </button>
 
-      {#each pages as p}
+      {#each pages as pageNumber}
         <button
-          class="btn-ghost min-w-[2rem] px-2 py-1 text-sm rounded-md {p === page ? 'bg-primary-100 text-primary-700 font-semibold' : ''}"
-          on:click={() => goTo(p)}
-          aria-current={p === page ? 'page' : undefined}
+          class="btn-ghost min-w-[2rem] px-2 py-1 text-sm rounded-md {pageNumber === page ? 'bg-primary-100 text-primary-700 font-semibold' : ''}"
+          on:click={() => goTo(pageNumber)}
+          aria-current={pageNumber === page ? 'page' : undefined}
         >
-          {p}
+          {pageNumber}
         </button>
       {/each}
 

@@ -2,15 +2,23 @@ import prisma from '../utils/prisma.js';
 import { verifyToken } from '../services/auth.service.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
 
+/**
+ * Middleware that authenticates a request via a `Bearer` token.
+ *
+ * Verifies the JWT signature, then checks that a matching, unexpired session
+ * still exists in the database. On success the resolved user is attached to
+ * `req.user` and the raw token to `req.token`.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ * @param {Function} next - Next middleware in the chain.
+ */
 export async function requireAuth(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = extractBearerToken(req.headers.authorization);
+    if (!token) {
       throw new UnauthorizedError('Missing or invalid authorization header');
     }
-
-    const token = authHeader.slice(7);
 
     let payload;
     try {
@@ -47,6 +55,13 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * Middleware factory that restricts a route to users holding one of the
+ * given roles.
+ *
+ * @param {...string} roles - Roles allowed to access the route.
+ * @returns {Function} Express-style middleware `(req, res, next)`.
+ */
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
@@ -59,4 +74,18 @@ export function requireRole(...roles) {
 
     next();
   };
+}
+
+/**
+ * Extract the token from an `Authorization: Bearer <token>` header.
+ *
+ * @param {string|undefined} authorizationHeader - Raw Authorization header.
+ * @returns {string|null} The bearer token, or null when the header is absent
+ *   or does not use the Bearer scheme.
+ */
+function extractBearerToken(authorizationHeader) {
+  if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authorizationHeader.slice(7);
 }

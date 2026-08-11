@@ -1,8 +1,12 @@
 <script>
-  import { fly, slide } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import { user } from '../stores/auth.js';
   import { sidebarOpen } from '../stores/ui.js';
 
+  /**
+   * Main navigation sidebar with mobile overlay.
+   * @prop {string} currentRoute - Active route path (for highlighting).
+   */
   export let currentRoute = '';
 
   const navItems = [
@@ -14,10 +18,12 @@
 
   $: shopName = $user?.shop?.name || $user?.shopName || 'My Shop';
 
+  /** Whether the given nav path matches the current route. */
   function isActive(path) {
     return currentRoute.startsWith(path);
   }
 
+  /** Close the sidebar (used on mobile after navigation). */
   function closeMobile() {
     sidebarOpen.set(false);
   }
@@ -25,7 +31,6 @@
 
 <!-- Mobile overlay -->
 {#if $sidebarOpen}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div
     class="fixed inset-0 bg-black/50 z-40 lg:hidden"
     on:click={closeMobile}

@@ -1,23 +1,32 @@
 <script>
   import { createEventDispatcher } from 'svelte';
 
+  /**
+   * Accessible modal dialog with backdrop, Escape-to-close and scroll lock.
+   * @prop {boolean} open - Whether the modal is visible.
+   * @prop {string} title - Modal title (also used as the aria-label).
+   * @event close - Dispatched when the user closes the modal.
+   */
   export let open = false;
   export let title = '';
 
   const dispatch = createEventDispatcher();
 
-  function handleBackdropClick(e) {
-    if (e.target === e.currentTarget) {
+  /** Close the modal when the backdrop itself is clicked. */
+  function handleBackdropClick(event) {
+    if (event.target === event.currentTarget) {
       dispatch('close');
     }
   }
 
-  function handleKeydown(e) {
-    if (e.key === 'Escape') {
+  /** Close the modal when Escape is pressed. */
+  function handleKeydown(event) {
+    if (event.key === 'Escape') {
       dispatch('close');
     }
   }
 
+  // Lock body scrolling while the modal is open.
   $: if (open) {
     document.body.style.overflow = 'hidden';
   } else {
@@ -28,14 +37,12 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if open}
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div
     class="fixed inset-0 z-40 bg-black/50"
     on:click={handleBackdropClick}
     on:keydown={handleKeydown}
     role="presentation"
   ></div>
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
     role="dialog"

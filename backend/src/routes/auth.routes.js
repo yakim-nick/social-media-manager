@@ -4,6 +4,9 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
+/**
+ * Authentication routes: register, login, logout and current-user lookup.
+ */
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   name: z.string().min(1, 'Name is required').max(255),

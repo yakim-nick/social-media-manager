@@ -1,3 +1,6 @@
+/**
+ * Media routes: file upload, listing and deletion.
+ */
 import { requireAuth } from '../middleware/auth.js';
 import * as mediaController from '../controllers/media.controller.js';
 import asyncHandler from '../utils/asyncHandler.js';

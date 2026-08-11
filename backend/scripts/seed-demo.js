@@ -10,17 +10,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const prisma = new PrismaClient();
 
-function loadDotenv(filePath) {
-  if (!existsSync(filePath)) return;
-  for (const rawLine of readFileSync(filePath, 'utf8').split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#') || !line.includes('=')) continue;
-    const key = line.slice(0, line.indexOf('=')).trim();
-    const value = line.slice(line.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '');
-    if (key && !process.env[key]) process.env[key] = value;
-  }
-}
-
+/**
+ * Seed the database with a demo shop, owner, account and a few sample posts.
+ * Safe to re-run: existing records are updated in place and posts are only
+ * created once.
+ */
 async function main() {
   const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, SALT_ROUNDS);
 
@@ -58,43 +52,7 @@ async function main() {
     },
   });
 
-  const existingPosts = await prisma.post.count({ where: { shopId: shop.id } });
-  if (existingPosts > 0) {
-    console.log(`Skipping post creation: ${existingPosts} post(s) already exist for demo shop.`);
-  } else {
-    const now = Date.now();
-    await prisma.post.create({
-      data: {
-        content:
-          'Planning the new seasonal menu — final tasting session is next week. Stay tuned for the big reveal.',
-        status: PostStatus.DRAFT,
-        shopId: shop.id,
-        createdById: user.id,
-      },
-    });
-    await prisma.post.create({
-      data: {
-        content:
-          'Soft launch of our new pastry line this Friday. Early birds get 10% off with code EARLY10.',
-        status: PostStatus.SCHEDULED,
-        scheduledAt: new Date(now + DAY_MS),
-        shopId: shop.id,
-        createdById: user.id,
-        accounts: { connect: [{ id: account.id }] },
-      },
-    });
-    await prisma.post.create({
-      data: {
-        content:
-          "Thank you to everyone who came to last weekend's tasting event — photos from the day are now live.",
-        status: PostStatus.PUBLISHED,
-        publishedAt: new Date(now - 2 * DAY_MS),
-        shopId: shop.id,
-        createdById: user.id,
-        accounts: { connect: [{ id: account.id }] },
-      },
-    });
-  }
+  await seedDemoPosts(shop.id, user.id, account.id);
 
   const posts = await prisma.post.findMany({ where: { shopId: shop.id } });
 
@@ -103,6 +61,54 @@ async function main() {
   console.log(`  User:    ${user.email} / ${DEMO_PASSWORD}`);
   console.log(`  Account: ${account.name} (${account.platform})`);
   console.log(`  Posts:   ${posts.length} (${posts.map((post) => post.status).join(', ')})`);
+}
+
+/**
+ * Create sample posts for the demo shop if none exist yet.
+ *
+ * @param {string} shopId - ID of the demo shop.
+ * @param {string} userId - ID of the demo owner.
+ * @param {string} accountId - ID of the demo social account.
+ */
+async function seedDemoPosts(shopId, userId, accountId) {
+  const existingPosts = await prisma.post.count({ where: { shopId } });
+  if (existingPosts > 0) {
+    console.log(`Skipping post creation: ${existingPosts} post(s) already exist for demo shop.`);
+    return;
+  }
+
+  const now = Date.now();
+  await prisma.post.create({
+    data: {
+      content:
+        'Planning the new seasonal menu — final tasting session is next week. Stay tuned for the big reveal.',
+      status: PostStatus.DRAFT,
+      shopId,
+      createdById: userId,
+    },
+  });
+  await prisma.post.create({
+    data: {
+      content:
+        'Soft launch of our new pastry line this Friday. Early birds get 10% off with code EARLY10.',
+      status: PostStatus.SCHEDULED,
+      scheduledAt: new Date(now + DAY_MS),
+      shopId,
+      createdById: userId,
+      accounts: { connect: [{ id: accountId }] },
+    },
+  });
+  await prisma.post.create({
+    data: {
+      content:
+        "Thank you to everyone who came to last weekend's tasting event — photos from the day are now live.",
+      status: PostStatus.PUBLISHED,
+      publishedAt: new Date(now - 2 * DAY_MS),
+      shopId,
+      createdById: userId,
+      accounts: { connect: [{ id: accountId }] },
+    },
+  });
 }
 
 main()

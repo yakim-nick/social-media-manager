@@ -1,4 +1,9 @@
 <script>
+  /**
+   * Colored pill badge showing a post status.
+   * Unknown statuses fall back to the draft styling.
+   * @prop {string} status - Post status (draft, scheduled, published, failed, pending).
+   */
   export let status = 'draft';
 
   const badges = {

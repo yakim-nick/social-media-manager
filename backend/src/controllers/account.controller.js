@@ -1,21 +1,23 @@
 import prisma from '../utils/prisma.js';
-import { NotFoundError, ForbiddenError } from '../utils/errors.js';
-import { PAGINATION_DEFAULTS } from '../config/constants.js';
+import { NotFoundError } from '../utils/errors.js';
+import { parsePagination } from '../utils/pagination.js';
+import { requireAccountAccess, findShopForUser, getUserShopIds } from '../utils/access.js';
 
+/**
+ * List social accounts visible to the authenticated user, with pagination.
+ *
+ * When a `shopId` filter is given, results are scoped to that shop (and the
+ * user's membership is verified); otherwise all of the user's shops are used.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function list(req, res) {
-  const page = parseInt(req.query.page) || PAGINATION_DEFAULTS.page;
-  const limit = Math.min(
-    parseInt(req.query.limit) || PAGINATION_DEFAULTS.limit,
-    PAGINATION_DEFAULTS.maxLimit
-  );
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination(req.query);
 
-  const shop = await prisma.shop.findFirst({
-    where: {
-      id: req.query.shopId || undefined,
-      users: { some: { id: req.user.id } },
-    },
-  });
+  const shop = req.query.shopId
+    ? await findShopForUser(req.query.shopId, req.user.id)
+    : await prisma.shop.findFirst({ where: { users: { some: { id: req.user.id } } } });
 
   if (!shop && req.query.shopId) {
     throw new NotFoundError('Shop not found');
@@ -25,11 +27,8 @@ export async function list(req, res) {
   if (shop) {
     where.shopId = shop.id;
   } else {
-    const userShops = await prisma.shop.findMany({
-      where: { users: { some: { id: req.user.id } } },
-      select: { id: true },
-    });
-    where.shopId = { in: userShops.map((s) => s.id) };
+    const shopIds = await getUserShopIds(req.user.id);
+    where.shopId = { in: shopIds };
   }
 
   const [accounts, total] = await Promise.all([
@@ -45,16 +44,16 @@ export async function list(req, res) {
   res.paginated(accounts, total, page, limit);
 }
 
+/**
+ * Create a social account linked to a shop the user belongs to.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function create(req, res) {
   const { platform, accountId, name, accessToken, refreshToken, shopId } = req.body;
 
-  const shop = await prisma.shop.findFirst({
-    where: {
-      id: shopId,
-      users: { some: { id: req.user.id } },
-    },
-  });
-
+  const shop = await findShopForUser(shopId, req.user.id);
   if (!shop) {
     throw new NotFoundError('Shop not found');
   }
@@ -74,23 +73,14 @@ export async function create(req, res) {
   res.json({ data: account }, 201);
 }
 
+/**
+ * Update an editable social account the user has access to.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function update(req, res) {
-  const account = await prisma.socialAccount.findFirst({
-    where: { id: req.params.id },
-    include: { shop: { select: { id: true } } },
-  });
-
-  if (!account) {
-    throw new NotFoundError('Account not found');
-  }
-
-  const isMember = await prisma.shop.findFirst({
-    where: { id: account.shopId, users: { some: { id: req.user.id } } },
-  });
-
-  if (!isMember) {
-    throw new ForbiddenError('You do not have access to this account');
-  }
+  await requireAccountAccess(req.params.id, req.user.id);
 
   const updated = await prisma.socialAccount.update({
     where: { id: req.params.id },
@@ -105,44 +95,28 @@ export async function update(req, res) {
   res.json({ data: updated });
 }
 
+/**
+ * Delete a social account the user has access to.
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function remove(req, res) {
-  const account = await prisma.socialAccount.findFirst({
-    where: { id: req.params.id },
-  });
-
-  if (!account) {
-    throw new NotFoundError('Account not found');
-  }
-
-  const isMember = await prisma.shop.findFirst({
-    where: { id: account.shopId, users: { some: { id: req.user.id } } },
-  });
-
-  if (!isMember) {
-    throw new ForbiddenError('You do not have access to this account');
-  }
+  await requireAccountAccess(req.params.id, req.user.id);
 
   await prisma.socialAccount.delete({ where: { id: req.params.id } });
 
   res.json({ data: { message: 'Account deleted successfully' } });
 }
 
+/**
+ * Mark a social account as synced (stamp `lastSyncedAt`).
+ *
+ * @param {import('node:http').IncomingMessage} req - Incoming request.
+ * @param {import('node:http').ServerResponse} res - Server response.
+ */
 export async function sync(req, res) {
-  const account = await prisma.socialAccount.findFirst({
-    where: { id: req.params.id },
-  });
-
-  if (!account) {
-    throw new NotFoundError('Account not found');
-  }
-
-  const isMember = await prisma.shop.findFirst({
-    where: { id: account.shopId, users: { some: { id: req.user.id } } },
-  });
-
-  if (!isMember) {
-    throw new ForbiddenError('You do not have access to this account');
-  }
+  await requireAccountAccess(req.params.id, req.user.id);
 
   await prisma.socialAccount.update({
     where: { id: req.params.id },

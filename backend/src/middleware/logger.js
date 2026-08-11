@@ -1,4 +1,4 @@
-const isDev = process.env.NODE_ENV !== 'production';
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -9,6 +9,13 @@ const COLORS = {
   dim: '\x1b[2m',
 };
 
+/**
+ * Pick an ANSI color for a status code: green for 2xx, cyan for 3xx,
+ * yellow for 4xx, red for 5xx.
+ *
+ * @param {number} status - HTTP status code.
+ * @returns {string} ANSI color escape sequence.
+ */
 function statusColor(status) {
   if (status < 300) return COLORS.green;
   if (status < 400) return COLORS.cyan;
@@ -16,25 +23,33 @@ function statusColor(status) {
   return COLORS.red;
 }
 
+/**
+ * Middleware factory that logs one line per completed request.
+ *
+ * In development the log is colorized and timestamped; in production a
+ * plain single-line format is used.
+ *
+ * @returns {Function} Express-style middleware `(req, res, next)`.
+ */
 export function logger() {
   return (req, res, next) => {
-    const start = Date.now();
+    const startTime = Date.now();
 
     res.once('finish', () => {
-      const duration = Date.now() - start;
+      const durationMs = Date.now() - startTime;
       const status = res.statusCode;
 
-      if (isDev) {
+      if (isDevelopment) {
         const color = statusColor(status);
         console.log(
           `${COLORS.dim}[${new Date().toISOString()}]${COLORS.reset} ` +
           `${COLORS.cyan}${req.method}${COLORS.reset} ` +
           `${req.path} ` +
           `${color}${status}${COLORS.reset} ` +
-          `${COLORS.dim}${duration}ms${COLORS.reset}`
+          `${COLORS.dim}${durationMs}ms${COLORS.reset}`
         );
       } else {
-        console.log(`${req.method} ${req.path} ${status} ${duration}ms`);
+        console.log(`${req.method} ${req.path} ${status} ${durationMs}ms`);
       }
     });
 

@@ -5,6 +5,9 @@ import { validate } from '../middleware/validate.js';
 import { ShopRole } from '../config/constants.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
+/**
+ * Shop management routes (members only; mutations scoped to the shop owner).
+ */
 const createShopSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   slug: z.string().min(1, 'Slug is required').max(255)

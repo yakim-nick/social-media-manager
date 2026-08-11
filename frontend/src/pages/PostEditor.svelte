@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { api } from '../utils/api.js';
-  import { createPost, updatePost, fetchPosts } from '../stores/posts.js';
+  import { createPost, updatePost } from '../stores/posts.js';
   import { fetchAccounts, accounts, accountsLoading } from '../stores/accounts.js';
   import { addNotification } from '../stores/ui.js';
   import LoadingSpinner from '../components/LoadingSpinner.svelte';
@@ -9,11 +9,13 @@
 
   export let params = {};
 
+  // Editor mode: editing an existing post vs. creating a new one.
   let isEdit = false;
   let postId = null;
   let loading = true;
   let saving = false;
 
+  // Form state.
   let content = '';
   let selectedAccounts = [];
   let status = 'draft';
@@ -35,12 +37,12 @@
         content = post.content || '';
         status = post.status || 'draft';
         if (post.accounts) {
-          selectedAccounts = post.accounts.map((a) => a.id || a._id || a);
+          selectedAccounts = post.accounts.map((account) => account.id || account._id || account);
         }
         if (post.scheduledAt) {
-          const d = new Date(post.scheduledAt);
-          scheduledAt = d.toISOString().split('T')[0];
-          scheduledTime = d.toTimeString().split(':').slice(0, 2).join(':');
+          const scheduledDate = new Date(post.scheduledAt);
+          scheduledAt = scheduledDate.toISOString().split('T')[0];
+          scheduledTime = scheduledDate.toTimeString().split(':').slice(0, 2).join(':');
         }
       }
     } catch (err) {
@@ -51,18 +53,23 @@
     }
   });
 
-  function validate() {
+  /** Validate the form, returning a list of human-readable error messages. */
+  function validatePost() {
     const errors = [];
     if (!content.trim()) errors.push('Post content is required.');
     if (selectedAccounts.length === 0) errors.push('Select at least one account to post to.');
     return errors;
   }
 
-  async function save(statusOverride) {
+  /**
+   * Save the post in the given status, uploading any pending files afterwards.
+   * @param {string} statusOverride - Target status (draft, scheduled, published).
+   */
+  async function savePost(statusOverride) {
     submitted = true;
     const targetStatus = statusOverride || status;
 
-    const errors = validate();
+    const errors = validatePost();
     if (errors.length > 0) {
       error = errors.join(' ');
       return;
@@ -89,7 +96,7 @@
         addNotification('success', 'Post created');
       }
 
-      // Upload files if any
+      // Upload files if any (best-effort; the post is already saved).
       if (uploadedFiles.length > 0) {
         const formData = new FormData();
         for (const file of uploadedFiles) {
@@ -111,6 +118,7 @@
     }
   }
 
+  /** Toggle an account in the selected-accounts list. */
   function toggleAccount(accountId) {
     if (selectedAccounts.includes(accountId)) {
       selectedAccounts = selectedAccounts.filter((id) => id !== accountId);
@@ -119,8 +127,9 @@
     }
   }
 
-  function handleFilesChange(e) {
-    const files = e.detail.files;
+  /** Store files emitted by the FileUpload component. */
+  function handleFilesChange(event) {
+    const files = event.detail.files;
     uploadedFiles = Array.isArray(files) ? files : (files ? [files] : []);
   }
 </script>
@@ -235,7 +244,7 @@
       <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-end border-t border-gray-200 pt-6">
         <button
           class="btn-secondary"
-          on:click={() => save('draft')}
+          on:click={() => savePost('draft')}
           disabled={saving}
         >
           {#if saving && status === 'draft'}
@@ -249,7 +258,7 @@
         {#if scheduledAt}
           <button
             class="btn-primary"
-            on:click={() => save('scheduled')}
+            on:click={() => savePost('scheduled')}
             disabled={saving}
           >
             {#if saving && status === 'scheduled'}
@@ -263,7 +272,7 @@
 
         <button
           class="bg-green-600 text-white btn hover:bg-green-700 focus:ring-green-500"
-          on:click={() => save('published')}
+          on:click={() => savePost('published')}
           disabled={saving}
         >
           {#if saving && status === 'published'}

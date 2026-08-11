@@ -4,6 +4,9 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
+/**
+ * Post routes: CRUD plus schedule and publish lifecycle actions.
+ */
 const createPostSchema = z.object({
   content: z.string().min(1, 'Content is required'),
   media: z.array(z.string()).optional(),
