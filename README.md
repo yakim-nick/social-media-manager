@@ -1,5 +1,7 @@
 # Social Media Manager for Small Shops
 
+[![CI](https://github.com/yakim-nick/social-media-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/yakim-nick/social-media-manager/actions/workflows/ci.yml)
+
 ## About
 
 ```
