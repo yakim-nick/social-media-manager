@@ -12,7 +12,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "svelte": "^4.2.0"
+    "svelte": "^5.56.9"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.1.0",
